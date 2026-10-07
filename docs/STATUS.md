@@ -25,7 +25,8 @@ Then follow the Git rules in AGENTS.md section 5 (status → fetch → pull main
 ## Per-task handoff (edit only your own subsection)
 ### T-01 Foundation/contracts — Done (Phase 0)
 Files created as listed above. Not yet pushed by an agent: the human extracts the Phase 0 zip into the repo, commits, and pushes to `main`.
-### T-02 — not started
+### T-02 — Done
+Audio and forced alignment are implemented (`src/audio.py`, `src/align.py`). Handled WhisperX implementation along with mock proportional-duration fallback for testing. Fixed white/empty transcript test errors. All T-02 tests (39+2) are passing smoothly.
 ### T-03 — not started
 ### T-04 — not started
 ### T-05 — not started
@@ -40,4 +41,4 @@ Files created as listed above. Not yet pushed by an agent: the human extracts th
 ## Open questions for the human
 See "Ambiguities" in the Phase 0 hand-off message; resolved answers get recorded in `docs/DECISIONS.md`.
 
-_Last updated: 2026-10-07 by T-01 (Claude web, Phase 0)._
+_Last updated: 2026-10-08 by T-02 (Antigravity)._
