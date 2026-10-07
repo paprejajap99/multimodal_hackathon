@@ -24,7 +24,7 @@ Common verification: `python scripts/validate_contracts.py` must keep passing in
 - **Verify:** `pytest tests/test_audio*.py tests/test_align*.py -q`
 
 ### T-03 Feature extraction & speaker normalization
-- **Owner:** ANTIGRAVITY · **Status:** Todo · **Depends on:** T-01 (T-02 for real alignments; develop with synthetic alignments)
+- **Owner:** ANTIGRAVITY · **Status:** Done · **Depends on:** T-01 (T-02 for real alignments; develop with synthetic alignments)
 - **Allowed files:** `src/features.py tests/test_features*.py` (+ `requirements.txt`)
 - **Acceptance:** produces for any (audio, words): frame series `f0_st_rel` (semitones re speaker median, null if unvoiced), `rms_db_rel`, windowed `speech_rate_wps`; region stats for `speech_rate_wps`, `f0_std_st`, `rms_db_rel`, `pause_duration_s`; also MFCC + spectrum (FFT) arrays available; exports series in the schema `track` format (`start_s,hop_s,values`); tests on synthetic tones/noise (e.g. gain −6 dB ⇒ rms_db_rel shifts as expected; flat vs varying pitch ⇒ f0_std_st).
 - **Verify:** `pytest tests/test_features*.py -q`

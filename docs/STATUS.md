@@ -27,7 +27,8 @@ Then follow the Git rules in AGENTS.md section 5 (status → fetch → pull main
 Files created as listed above. Not yet pushed by an agent: the human extracts the Phase 0 zip into the repo, commits, and pushes to `main`.
 ### T-02 — Done
 Audio and forced alignment are implemented (`src/audio.py`, `src/align.py`). Handled WhisperX implementation along with mock proportional-duration fallback for testing. Fixed white/empty transcript test errors. All T-02 tests (39+2) are passing smoothly.
-### T-03 — not started
+### T-03 — Done
+Implemented acoustic feature extraction and speaker normalization in `src/features.py`. Uses `librosa.pyin` for pitch and `librosa.feature.rms` for loudness. All tracking series export in schema format and region stats comply with specs. Unit tests pass successfully.
 ### T-04 — not started
 ### T-05 — not started
 ### T-06 — not started
@@ -41,4 +42,4 @@ Audio and forced alignment are implemented (`src/audio.py`, `src/align.py`). Han
 ## Open questions for the human
 See "Ambiguities" in the Phase 0 hand-off message; resolved answers get recorded in `docs/DECISIONS.md`.
 
-_Last updated: 2026-10-08 by T-02 (Antigravity)._
+_Last updated: 2026-10-08 by T-03 (Antigravity)._
