@@ -18,7 +18,7 @@ Common verification: `python scripts/validate_contracts.py` must keep passing in
 - **Verify:** `pip install pyyaml jsonschema pytest && python scripts/validate_contracts.py && pytest tests/test_contracts.py -q`
 
 ### T-02 Audio & forced alignment
-- **Owner:** ANTIGRAVITY · **Status:** Todo · **Depends on:** T-01
+- **Owner:** ANTIGRAVITY · **Status:** Done · **Depends on:** T-01
 - **Allowed files:** `src/audio.py src/align.py tests/test_audio*.py tests/test_align*.py` (+ `requirements.txt` append)
 - **Acceptance:** `load_audio` (mono/16 kHz); `align(audio, sr, transcript)` returns Word list (`index,text,start_s,end_s`), monotonic, one entry per transcript word, deterministic; works offline once models are downloaded; documents chosen aligner (e.g. torchaudio MMS forced alignment / WhisperX / MFA — pick the one that installs reliably). Alignment verified by eye on ≥1 real clip (note in STATUS).
 - **Verify:** `pytest tests/test_audio*.py tests/test_align*.py -q`
