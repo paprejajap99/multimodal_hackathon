@@ -29,7 +29,8 @@ Files created as listed above. Not yet pushed by an agent: the human extracts th
 Audio and forced alignment are implemented (`src/audio.py`, `src/align.py`). Handled WhisperX implementation along with mock proportional-duration fallback for testing. Fixed white/empty transcript test errors. All T-02 tests (39+2) are passing smoothly.
 ### T-03 — Done
 Implemented acoustic feature extraction and speaker normalization in `src/features.py`. Uses `librosa.pyin` for pitch and `librosa.feature.rms` for loudness. All tracking series export in schema format and region stats comply with specs. Unit tests pass successfully.
-### T-04 — not started
+### T-04 — Done
+Implemented controlled contrastive flaw generator (`src/gen/flaw_generator.py`). The generator supports all 6 taxonomy flaws and 5 severity levels, utilizing deterministic DSP via librosa and pyworld. Handled strict rule of recalculating participant timestamps for timeline-altering operations (e.g., time stretching and inserting pauses). Unit tests (`tests/test_gen.py`) verify the ground-truth region bounds and timestamps precisely match the expectations on synthetic audio fixtures and all pass.
 ### T-05 — not started
 ### T-06 — not started
 ### T-07 — not started
@@ -42,4 +43,4 @@ Implemented acoustic feature extraction and speaker normalization in `src/featur
 ## Open questions for the human
 See "Ambiguities" in the Phase 0 hand-off message; resolved answers get recorded in `docs/DECISIONS.md`.
 
-_Last updated: 2026-10-08 by T-03 (Antigravity)._
+_Last updated: 2026-10-08 by T-04 (Antigravity)._
