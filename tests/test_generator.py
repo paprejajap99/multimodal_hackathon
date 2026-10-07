@@ -1,6 +1,8 @@
 import csv
 import json
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -157,3 +159,42 @@ def test_missing_reference_and_invalid_alignment_fail_clearly(tmp_path):
             ],
             config={"flaw_ids": ["pace_fast"], "levels": [1], "word_ranges": {"pace_fast": (0, 1)}},
         )
+
+
+def test_build_dataset_cli_writes_fixture_outputs(tmp_path):
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "src.gen.build_dataset",
+            "--reference-audio",
+            str(REFERENCE_AUDIO),
+            "--transcript",
+            str(TRANSCRIPT),
+            "--output-dir",
+            str(tmp_path),
+            "--seed",
+            "11",
+            "--flaw-id",
+            "long_pauses",
+            "--level",
+            "2",
+            "--word-start",
+            "2",
+            "--word-end",
+            "3",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    manifest = tmp_path / "manifest.csv"
+    assert manifest.is_file()
+    row = next(csv.DictReader(manifest.open(newline="", encoding="utf-8")))
+    assert row["flaw_type"] == "long_pauses"
+    assert row["level"] == "2"
+    assert (tmp_path / row["audio_path"]).is_file()
+    assert (tmp_path / row["ground_truth_path"]).is_file()
+    assert result.stdout.strip() == str(manifest)
