@@ -218,13 +218,13 @@ def apply_flaw(
         
         added_pause_s = injected_value
         insert_samples = int(added_pause_s * sr)
+        actual_added_pause_s = insert_samples / sr
         silence = np.zeros(insert_samples, dtype=audio.dtype)
         
         flawed_audio = np.concatenate([pre, silence, pos])
-        duration_diff = added_pause_s
+        duration_diff = actual_added_pause_s
         
         part_start_time = ref_start_s
-        part_end_time = ref_start_s + duration_diff
         
         # shift subsequent words
         for i, w in enumerate(new_words):
@@ -232,6 +232,9 @@ def apply_flaw(
             if i >= word_end_idx:
                 w["start_s"] += duration_diff
                 w["end_s"] += duration_diff
+
+        # The participant pause includes the original gap plus inserted silence.
+        part_end_time = new_words[word_end_idx]["start_s"]
                 
     else:
         raise ValueError(f"Unsupported flaw {flaw_id}")

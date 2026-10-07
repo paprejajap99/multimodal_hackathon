@@ -30,7 +30,7 @@ Audio and forced alignment are implemented (`src/audio.py`, `src/align.py`). Han
 ### T-03 — Done
 Implemented acoustic feature extraction and speaker normalization in `src/features.py`. Uses `librosa.pyin` for pitch and `librosa.feature.rms` for loudness. All tracking series export in schema format and region stats comply with specs. Unit tests pass successfully.
 ### T-04 — Done
-Implemented controlled contrastive flaw generator (`src/gen/flaw_generator.py`). The generator supports all 6 taxonomy flaws and 5 severity levels, utilizing deterministic DSP via librosa and pyworld. Handled strict rule of recalculating participant timestamps for timeline-altering operations (e.g., time stretching and inserting pauses). Unit tests (`tests/test_gen.py`) verify the ground-truth region bounds and timestamps precisely match the expectations on synthetic audio fixtures and all pass.
+Implemented controlled contrastive flaw generator (`src/gen/flaw_generator.py`). The generator supports all 6 taxonomy flaws and 5 severity levels, utilizing deterministic DSP via librosa and pyworld. Timeline-altering operations recalculate participant word times and labels; long-pause GT now spans the complete resulting participant pause from the prior word end to the shifted next word start. `tests/test_gen.py` verifies the intended acoustic direction for every flaw (speech rate, F0 variation, RMS, and pause duration). T-04 tests pass 14/14; the full suite passes 57/57.
 ### T-05 — not started
 ### T-06 — not started
 ### T-07 — not started
@@ -43,4 +43,4 @@ Implemented controlled contrastive flaw generator (`src/gen/flaw_generator.py`).
 ## Open questions for the human
 See "Ambiguities" in the Phase 0 hand-off message; resolved answers get recorded in `docs/DECISIONS.md`.
 
-_Last updated: 2026-10-08 by T-04 (Antigravity)._
+Last updated: 2026-10-08 by T-04 (Copilot).

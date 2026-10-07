@@ -30,7 +30,7 @@ Common verification: `python scripts/validate_contracts.py` must keep passing in
 - **Verify:** `pytest tests/test_features*.py -q`
 
 ### T-04 Dataset & flaw generator (+ ground truth)
-- **Owner:** ANTIGRAVITY · **Status:** Done · **Depends on:** T-01 (baseline alignment from T-02 or own)
+- **Owner:** ANTIGRAVITY · **Status:** Done · Final verification: long-pause participant GT and all six acoustic-effect tests pass · **Depends on:** T-01 (baseline alignment from T-02 or own)
 - **Allowed files:** `src/gen/ data/ docs/DATASET.md tests/test_gen*.py` (+ `requirements.txt`)
 - **Acceptance:** source 2–3 good recordings + transcripts; generator reads `config/flaw_types.yaml` (via `src/taxonomy.py`) and creates 6 flaws × 5 levels per source (+ a few mixed files); **timeline-changing flaws recompute word times and labels**; each file has a `.gt.json` per ARCHITECTURE §5; `manifest.csv`; seeded/reproducible (`python -m src.gen.build_dataset --seed 7`); tests check GT region bounds vs actual audio (e.g. inserted silence length, stretched duration); `docs/DATASET.md` documents sources, licenses, method; 2–3 real human flawed recordings hand-labeled.
 - **Verify:** `pytest tests/test_gen*.py -q`
