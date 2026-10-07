@@ -1,0 +1,18 @@
+# Track C — Contrastive Speech Analytics & Temporal Flaw Grounding
+# Pinned dependencies. Append new lines; do not remove existing lines.
+# Format: package>=minversion  # T-XX  <reason>
+
+# Base / contracts (T-01 verify)
+pyyaml>=6.0          # T-01  YAML config parsing (flaw_types.yaml, taxonomy loader)
+jsonschema>=4.18     # T-01  JSON Schema validation (analysis.schema.json)
+pytest>=7.0          # T-01  test runner
+
+# T-02: audio loading, resampling, and forced alignment
+soundfile>=0.12.1    # T-02  WAV/FLAC/OGG decoding (primary audio loader)
+scipy>=1.10          # T-02  rational resampling (resample_poly) + WAV fallback
+numpy>=1.24          # T-02  array operations
+
+# T-02 optional: real production forced alignment (install separately)
+# Requires PyTorch; GPU recommended but CPU works (slower).
+# Uncomment and run:  pip install whisperx
+# whisperx>=3.1.1    # T-02  WhisperX wav2vec2 forced aligner (PRODUCTION backend)
