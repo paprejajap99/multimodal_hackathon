@@ -1,0 +1,19 @@
+# secrets
+.env
+.env.*
+*.key
+secrets/
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+# node
+node_modules/
+web/dist/
+# local scratch / caches (committed dataset lives in data/, scratch does not)
+.cache/
+tmp/
+*.tmp
+.DS_Store

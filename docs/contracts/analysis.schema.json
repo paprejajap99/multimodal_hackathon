@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "analysis.schema.json",
+  "title": "Track C analysis result",
+  "description": "Output of the backend analysis for ONE participant recording compared to ONE reference recording of the same transcript. All times are seconds (float). Word indices are 0-based into the transcript word list and are identical for reference and participant.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "analysis_id", "created_at", "metadata", "reference", "participant", "analyzed_duration_s", "overall_score", "rubric_scores", "flaw_regions", "words", "series", "warnings"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "analysis_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "metadata": {
+      "type": "object",
+      "description": "Provenance for reproducibility. Extra keys allowed.",
+      "required": ["pipeline_version", "taxonomy_version", "language", "sample_rate_hz", "alignment_method", "comparison_mode"],
+      "properties": {
+        "pipeline_version": {"type": "string"},
+        "taxonomy_version": {"type": "string"},
+        "language": {"type": "string"},
+        "sample_rate_hz": {"type": "integer", "minimum": 8000},
+        "alignment_method": {"type": "string"},
+        "comparison_mode": {"const": "reference_word_aligned"},
+        "explanation_method": {"enum": ["template", "llm_reworded"]},
+        "seed": {"type": ["integer", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "reference": {"$ref": "#/$defs/recording"},
+    "participant": {"$ref": "#/$defs/recording"},
+    "analyzed_duration_s": {"type": "number", "minimum": 0, "description": "Duration of the participant audio that was analysed."},
+    "overall_score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "max", "rubric_version"],
+      "properties": {
+        "value": {"type": "number", "minimum": 0},
+        "max": {"type": "number", "exclusiveMinimum": 0},
+        "rubric_version": {"type": "string"},
+        "summary": {"type": "string"}
+      }
+    },
+    "rubric_scores": {"type": "array", "items": {"$ref": "#/$defs/rubricScore"}},
+    "flaw_regions": {
+      "type": "array",
+      "description": "Sorted by start_s ascending.",
+      "items": {"$ref": "#/$defs/flawRegion"}
+    },
+    "words": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "participant"],
+      "description": "Forced-alignment output. Word i in 'reference' and word i in 'participant' are the same transcript word.",
+      "properties": {
+        "reference": {"type": "array", "items": {"$ref": "#/$defs/word"}},
+        "participant": {"type": "array", "items": {"$ref": "#/$defs/word"}}
+      }
+    },
+    "series": {
+      "type": "array",
+      "description": "Time-series for the dashboard overlay. Reference and participant tracks live on their OWN timelines.",
+      "items": {"$ref": "#/$defs/series"}
+    },
+    "warnings": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "flawType": {"enum": ["pace_fast", "pace_slow", "monotone", "low_volume", "short_pauses", "long_pauses"]},
+    "featureId": {"enum": ["speech_rate_wps", "f0_st_rel", "f0_std_st", "rms_db_rel", "pause_duration_s"]},
+    "componentId": {"enum": ["pacing", "pausing", "expressiveness", "volume"]},
+    "severityLabel": {"enum": ["very_slight", "slight", "moderate", "strong", "severe"]},
+    "recording": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "audio_file", "transcript_file", "duration_s"],
+      "properties": {
+        "id": {"type": "string"},
+        "label": {"type": "string"},
+        "audio_file": {"type": "string"},
+        "transcript_file": {"type": "string"},
+        "duration_s": {"type": "number", "minimum": 0},
+        "speaker_id": {"type": ["string", "null"]}
+      }
+    },
+    "word": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "text", "start_s", "end_s"],
+      "properties": {
+        "index": {"type": "integer", "minimum": 0},
+        "text": {"type": "string"},
+        "start_s": {"type": "number", "minimum": 0},
+        "end_s": {"type": "number", "minimum": 0}
+      }
+    },
+    "track": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_s", "hop_s", "values"],
+      "description": "Uniformly sampled: value k is at time start_s + k*hop_s. null = undefined (e.g. unvoiced F0).",
+      "properties": {
+        "start_s": {"type": "number", "minimum": 0},
+        "hop_s": {"type": "number", "exclusiveMinimum": 0},
+        "values": {"type": "array", "items": {"type": ["number", "null"]}}
+      }
+    },
+    "series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature_id", "unit", "reference", "participant"],
+      "properties": {
+        "feature_id": {"$ref": "#/$defs/featureId"},
+        "unit": {"type": "string"},
+        "reference": {"$ref": "#/$defs/track"},
+        "participant": {"$ref": "#/$defs/track"}
+      }
+    },
+    "rubricScore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_id", "display_name", "score", "max", "weight", "penalty_total", "flaw_region_ids"],
+      "properties": {
+        "component_id": {"$ref": "#/$defs/componentId"},
+        "display_name": {"type": "string"},
+        "score": {"type": "number", "minimum": 0},
+        "max": {"type": "number", "exclusiveMinimum": 0},
+        "weight": {"type": "number", "minimum": 0, "maximum": 1},
+        "penalty_total": {"type": "number", "minimum": 0},
+        "flaw_region_ids": {"type": "array", "items": {"type": "string"}},
+        "comment": {"type": "string"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature", "unit", "reference_value", "participant_value", "delta", "delta_pct", "normalization", "role"],
+      "properties": {
+        "feature": {"$ref": "#/$defs/featureId"},
+        "unit": {"type": "string"},
+        "reference_value": {"type": "number"},
+        "participant_value": {"type": "number"},
+        "delta": {"type": "number", "description": "participant_value - reference_value, in `unit`."},
+        "delta_pct": {"type": ["number", "null"], "description": "100*delta/|reference_value|; null if reference_value is 0."},
+        "normalization": {"type": "string", "description": "How the value is speaker-normalized, e.g. 'semitones re speaker median'."},
+        "role": {"enum": ["primary", "supporting"]}
+      }
+    },
+    "flawRegion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "flaw_type", "severity_level", "severity_label", "start_s", "end_s", "duration_s", "reference_start_s", "reference_end_s", "confidence", "detection", "transcript", "evidence", "explanation"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^fr_[0-9]{2,}$"},
+        "flaw_type": {"$ref": "#/$defs/flawType"},
+        "severity_level": {"type": "integer", "minimum": 1, "maximum": 5},
+        "severity_label": {"$ref": "#/$defs/severityLabel"},
+        "start_s": {"type": "number", "minimum": 0, "description": "On the PARTICIPANT timeline. For pause flaws: start of the silent gap."},
+        "end_s": {"type": "number", "minimum": 0, "description": "On the PARTICIPANT timeline. end_s >= start_s."},
+        "duration_s": {"type": "number", "minimum": 0},
+        "reference_start_s": {"type": "number", "minimum": 0, "description": "Corresponding span on the REFERENCE timeline (same transcript words)."},
+        "reference_end_s": {"type": "number", "minimum": 0},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "detection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method", "metric", "metric_value", "threshold"],
+          "properties": {
+            "method": {"type": "string"},
+            "metric": {"enum": ["abs_delta_pct", "abs_delta"]},
+            "metric_value": {"type": "number"},
+            "threshold": {"type": "number", "description": "Minimum metric value for this flaw to be flagged (taxonomy severity_bounds[0])."}
+          }
+        },
+        "transcript": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "word_start_index", "word_end_index"],
+          "description": "Inclusive word range. For pause (gap) flaws: the two words surrounding the gap.",
+          "properties": {
+            "text": {"type": "string"},
+            "word_start_index": {"type": "integer", "minimum": 0},
+            "word_end_index": {"type": "integer", "minimum": 0}
+          }
+        },
+        "evidence": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/evidence"}},
+        "explanation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["summary", "cause", "impact", "suggestion", "method", "evidence_features"],
+          "properties": {
+            "summary": {"type": "string", "description": "One sentence quoting the measured numbers."},
+            "cause": {"type": "string"},
+            "impact": {"type": "string"},
+            "suggestion": {"type": "string"},
+            "method": {"enum": ["template", "llm_reworded"]},
+            "evidence_features": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/featureId"}, "description": "Features whose evidence items the explanation is built from."}
+          }
+        }
+      }
+    }
+  }
+}

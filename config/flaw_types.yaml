@@ -1,0 +1,235 @@
+# =====================================================================
+# config/flaw_types.yaml  --  SINGLE SOURCE OF TRUTH for the flaw taxonomy
+# Used by: dataset generator, detector, evaluator, explainer, scorer, frontend.
+# Do not redefine any ID, unit, level or template elsewhere.
+# Lists indexed by severity level use index 0 = level 1 ... index 4 = level 5.
+# =====================================================================
+version: "1.0.0"
+
+# ---- Severity gradient (level 0 = unmodified "good" reference, not a flaw) ----
+levels:
+  - {level: 1, id: very_slight, label: "Very slight", description: "Near-perfect delivery; flaw barely perceptible."}
+  - {level: 2, id: slight,      label: "Slight",      description: "Noticeable to a careful listener."}
+  - {level: 3, id: moderate,    label: "Moderate",    description: "Clearly noticeable; would cost points."}
+  - {level: 4, id: strong,      label: "Strong",      description: "Distracting; undermines delivery."}
+  - {level: 5, id: severe,      label: "Severe",      description: "Egregiously wrong; completely botched."}
+
+# ---- Evaluation conventions shared by dataset + evaluator ----
+evaluation:
+  must_detect_min_level: 2        # level-1 flaws are "bonus": missing them is not penalised
+  iou_match_threshold: 0.5        # temporal IoU needed to call a predicted region a match
+
+# ---- Feature registry (feature IDs used in evidence + series) ----
+features:
+  speech_rate_wps:
+    display_name: "Speech rate"
+    unit: "words/s"
+    description: "Words per second over a region, from forced-alignment word timings (pauses inside the region included)."
+    normalization: "Compared to the reference over the SAME transcript word range."
+  f0_st_rel:
+    display_name: "Pitch (relative)"
+    unit: "semitones"
+    description: "Frame-level F0 in semitones relative to the speaker's own median F0. Null where unvoiced."
+    normalization: "12*log2(f0 / median_f0_of_speaker); speaker-agnostic."
+  f0_std_st:
+    display_name: "Pitch variation"
+    unit: "semitones"
+    description: "Standard deviation of f0_st_rel over voiced frames of a region (intonation range)."
+    normalization: "Semitones relative to the speaker median; comparable across speakers."
+  rms_db_rel:
+    display_name: "Loudness (relative)"
+    unit: "dB"
+    description: "Frame RMS energy in dB relative to the recording's median speech-frame RMS."
+    normalization: "dB minus median speech-frame dB of the same recording."
+  pause_duration_s:
+    display_name: "Pause length"
+    unit: "s"
+    description: "Silence gap between two adjacent aligned words."
+    normalization: "Compared to the reference gap at the same word boundary."
+
+# ---- Rubric components (scoring); every flaw maps to exactly one ----
+scoring:
+  scale_max: 100
+  default_level_penalty: [3, 7, 12, 18, 25]    # points deducted per region by severity level 1..5
+  region_penalty_rule: "penalty = default_level_penalty[level-1] * flaw.scoring.penalty_multiplier"
+  component_score_rule: "component = max(0, 100 - sum(region penalties in that component))"
+  overall_rule: "overall = sum(weight * component_score)  (weights sum to 1.0)"
+  components:
+    - {id: pacing,         display_name: "Pacing",                       weight: 0.30}
+    - {id: pausing,        display_name: "Pausing",                      weight: 0.25}
+    - {id: expressiveness, display_name: "Vocal expressiveness",        weight: 0.25}
+    - {id: volume,         display_name: "Volume & projection",          weight: 0.20}
+
+# ---- Flaw definitions ----
+# Explanation templates use Python str.format fields:
+#   text, start_s, end_s, level, severity_label, unit,
+#   reference_value, participant_value, delta, delta_pct, abs_delta, abs_delta_pct
+flaws:
+
+  pace_fast:
+    id: pace_fast
+    display_name: "Pace too fast"
+    description: "Words are delivered faster than the reference, leaving little time for the audience to absorb them."
+    category: pacing
+    features: [speech_rate_wps]
+    primary_feature: speech_rate_wps
+    expected_direction: increase
+    region_type: words              # region = span of words (start of first word .. end of last word)
+    injection:
+      method: time_stretch          # pitch-preserving
+      parameter: {name: speed_factor, unit: "x", description: "1.0 = unchanged; >1 faster"}
+      values: [1.08, 1.18, 1.32, 1.50, 1.75]
+      changes_timeline: true        # ground-truth timestamps MUST be recomputed
+      scope: "one contiguous span of 5-15 words inside a sentence"
+    ground_truth:
+      label_fields: [flaw_type, level, start_s, end_s, word_start_index, word_end_index, reference_start_s, reference_end_s, injected_value]
+      timestamp_rule: "start_s/end_s are on the FLAWED audio timeline, derived from the reference word timings after the stretch is applied."
+    detection:
+      metric: abs_delta_pct          # |delta_pct| of primary feature vs reference
+      severity_bounds: [6, 13, 25, 41, 62]   # lower bound (inclusive) for levels 1..5; < bounds[0] = not flagged
+    explanation:
+      summary_template: "Speech rate rose to {participant_value:.1f} {unit} against a reference of {reference_value:.1f} {unit} (+{abs_delta_pct:.0f}%) over \"{text}\" ({start_s:.1f}-{end_s:.1f} s)."
+      cause: "The words in this span were spoken noticeably faster than the reference delivery of the same text."
+      impact: "Listeners get less time to process each word, and emphasis and pauses get squeezed out."
+      suggestion: "Slow down on this passage and let key phrases breathe."
+    scoring: {component: pacing, penalty_multiplier: 1.0}
+
+  pace_slow:
+    id: pace_slow
+    display_name: "Pace too slow"
+    description: "Words are delivered more slowly than the reference, so delivery drags."
+    category: pacing
+    features: [speech_rate_wps]
+    primary_feature: speech_rate_wps
+    expected_direction: decrease
+    region_type: words
+    injection:
+      method: time_stretch
+      parameter: {name: speed_factor, unit: "x", description: "1.0 = unchanged; <1 slower"}
+      values: [0.93, 0.85, 0.75, 0.65, 0.55]
+      changes_timeline: true
+      scope: "one contiguous span of 5-15 words inside a sentence"
+    ground_truth:
+      label_fields: [flaw_type, level, start_s, end_s, word_start_index, word_end_index, reference_start_s, reference_end_s, injected_value]
+      timestamp_rule: "start_s/end_s are on the FLAWED audio timeline, derived from the reference word timings after the stretch is applied."
+    detection:
+      metric: abs_delta_pct
+      severity_bounds: [5, 11, 20, 30, 40]
+    explanation:
+      summary_template: "Speech rate dropped to {participant_value:.1f} {unit} against a reference of {reference_value:.1f} {unit} (-{abs_delta_pct:.0f}%) over \"{text}\" ({start_s:.1f}-{end_s:.1f} s)."
+      cause: "The words in this span were spoken noticeably more slowly than the reference delivery of the same text."
+      impact: "The delivery drags, which can sound hesitant and lose the audience's attention."
+      suggestion: "Pick up the tempo here and keep the phrase moving."
+    scoring: {component: pacing, penalty_multiplier: 1.0}
+
+  monotone:
+    id: monotone
+    display_name: "Monotone delivery"
+    description: "Pitch range is flattened; intonation and emphasis are missing."
+    category: expressiveness
+    features: [f0_std_st, f0_st_rel]
+    primary_feature: f0_std_st
+    expected_direction: decrease
+    region_type: words
+    injection:
+      method: f0_compression         # compress F0 contour toward the speaker median (e.g. PSOLA/WORLD resynthesis)
+      parameter: {name: f0_range_retained, unit: "fraction", description: "1.0 = unchanged; 0.0 = perfectly flat"}
+      values: [0.85, 0.65, 0.45, 0.25, 0.10]
+      changes_timeline: false        # timing unchanged; reference timestamps stay valid
+      scope: "one contiguous span of 8-20 words (>= 3 s)"
+    ground_truth:
+      label_fields: [flaw_type, level, start_s, end_s, word_start_index, word_end_index, reference_start_s, reference_end_s, injected_value]
+      timestamp_rule: "Timeline unchanged, so start_s/end_s equal the reference word timings of the affected span."
+    detection:
+      metric: abs_delta_pct
+      severity_bounds: [10, 25, 45, 65, 82]
+    explanation:
+      summary_template: "Pitch variation fell to {participant_value:.1f} {unit} from {reference_value:.1f} {unit} in the reference (-{abs_delta_pct:.0f}%) over \"{text}\" ({start_s:.1f}-{end_s:.1f} s)."
+      cause: "The pitch contour in this span is much flatter than in the reference, so stress and intonation cues are missing."
+      impact: "The passage sounds flat and unengaged; key words are not emphasised."
+      suggestion: "Add rise and fall on important words and at phrase boundaries."
+    scoring: {component: expressiveness, penalty_multiplier: 1.0}
+
+  low_volume:
+    id: low_volume
+    display_name: "Volume too low"
+    description: "A span is spoken noticeably quieter than the rest of the speech."
+    category: volume
+    features: [rms_db_rel]
+    primary_feature: rms_db_rel
+    expected_direction: decrease
+    region_type: words
+    injection:
+      method: gain
+      parameter: {name: gain_db, unit: "dB", description: "negative = quieter"}
+      values: [-3, -6, -10, -15, -22]
+      changes_timeline: false
+      scope: "one contiguous span of 5-15 words, covering well under half of the recording (loudness is measured relative to the recording's own median)"
+    ground_truth:
+      label_fields: [flaw_type, level, start_s, end_s, word_start_index, word_end_index, reference_start_s, reference_end_s, injected_value]
+      timestamp_rule: "Timeline unchanged; start_s/end_s equal the reference word timings of the affected span."
+    detection:
+      metric: abs_delta                # |delta| in dB
+      severity_bounds: [2.0, 4.5, 8.0, 12.5, 18.5]
+    explanation:
+      summary_template: "Loudness dropped {abs_delta:.1f} {unit} relative to the reference (participant {participant_value:.1f} {unit} vs {reference_value:.1f} {unit}) over \"{text}\" ({start_s:.1f}-{end_s:.1f} s)."
+      cause: "The energy level in this span is well below the recording's normal speaking level."
+      impact: "The passage may be hard to hear and sounds unconfident."
+      suggestion: "Keep projection steady through the end of sentences and phrases."
+    scoring: {component: volume, penalty_multiplier: 1.0}
+
+  short_pauses:
+    id: short_pauses
+    display_name: "Pauses too short"
+    description: "A pause at a phrase/sentence boundary is shortened or removed, so ideas run together."
+    category: pausing
+    features: [pause_duration_s]
+    primary_feature: pause_duration_s
+    expected_direction: decrease
+    region_type: gap                  # region = the silent gap between two adjacent words
+    injection:
+      method: pause_scaling
+      parameter: {name: pause_scale, unit: "x", description: "multiplier on the reference pause; 1.0 unchanged, 0.0 removed"}
+      values: [0.8, 0.6, 0.4, 0.2, 0.0]
+      changes_timeline: true
+      scope: "pauses >= 0.25 s at punctuation boundaries (a flawed file may shorten 1-3 of them)"
+    ground_truth:
+      label_fields: [flaw_type, level, start_s, end_s, word_start_index, word_end_index, reference_start_s, reference_end_s, injected_value]
+      timestamp_rule: "start_s = end of word_start_index, end_s = start of word_end_index (= word_start_index + 1) on the FLAWED timeline; zero-length gaps keep start_s == end_s."
+    detection:
+      metric: abs_delta_pct
+      severity_bounds: [10, 30, 50, 70, 90]
+    explanation:
+      summary_template: "The pause at \"{text}\" lasted {participant_value:.2f} {unit} versus {reference_value:.2f} {unit} in the reference ({abs_delta_pct:.0f}% shorter), at {start_s:.1f}-{end_s:.1f} s."
+      cause: "The speaker moved on almost immediately at a phrase boundary where the reference pauses."
+      impact: "Ideas run together and the audience has no moment to absorb the point."
+      suggestion: "Hold the pause at sentence and idea boundaries."
+    scoring: {component: pausing, penalty_multiplier: 1.0}
+
+  long_pauses:
+    id: long_pauses
+    display_name: "Pauses too long"
+    description: "An extra or overly long silence interrupts the flow of the speech."
+    category: pausing
+    features: [pause_duration_s]
+    primary_feature: pause_duration_s
+    expected_direction: increase
+    region_type: gap
+    injection:
+      method: silence_insertion
+      parameter: {name: added_pause_s, unit: "s", description: "seconds of silence added at a word boundary"}
+      values: [0.4, 0.8, 1.3, 2.0, 3.0]
+      changes_timeline: true          # everything after the insertion shifts later
+      scope: "1-3 insertions at word boundaries (mostly mid-phrase)"
+    ground_truth:
+      label_fields: [flaw_type, level, start_s, end_s, word_start_index, word_end_index, reference_start_s, reference_end_s, injected_value]
+      timestamp_rule: "start_s = end of word_start_index, end_s = start of word_end_index (= word_start_index + 1) on the FLAWED timeline; all later word times shift by the inserted duration."
+    detection:
+      metric: abs_delta                # |delta| in seconds
+      severity_bounds: [0.25, 0.6, 1.05, 1.65, 2.5]
+    explanation:
+      summary_template: "A {participant_value:.2f} {unit} silence at \"{text}\" is {abs_delta:.2f} {unit} longer than the reference pause ({reference_value:.2f} {unit}), at {start_s:.1f}-{end_s:.1f} s."
+      cause: "The speaker stopped mid-phrase for far longer than the reference delivery does."
+      impact: "The flow breaks, which can read as losing one's place or hesitation."
+      suggestion: "Keep the phrase connected; save long pauses for major transitions."
+    scoring: {component: pausing, penalty_multiplier: 1.0}
